@@ -254,22 +254,41 @@ function exportGeoJSON() {
 }
 
 function applyCanvasTransform(context, canvas) {
-  const transformValue = canvas.style.transform;
-  if (!transformValue) {
-    context.setTransform(1, 0, 0, 1, 0, 0);
+  const transform = canvas.style.transform;
+
+  if (transform && transform.startsWith('matrix(')) {
+    const values = transform
+      .slice(7, -1)
+      .split(',')
+      .map((value) => Number(value.trim()));
+
+    if (values.length === 6 && values.every((value) => Number.isFinite(value))) {
+      context.setTransform(...values);
+      return;
+    }
+  }
+
+  const width = Number.parseFloat(canvas.style.width);
+  const height = Number.parseFloat(canvas.style.height);
+
+  if (
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width > 0 &&
+    height > 0
+  ) {
+    context.setTransform(
+      canvas.width / width,
+      0,
+      0,
+      canvas.height / height,
+      0,
+      0
+    );
     return;
   }
 
-  const matrix = transformValue
-    .match(/^matrix\(([^()]*)\)$/)?.[1]
-    .split(',')
-    .map(Number);
-
-  if (matrix && matrix.length === 6) {
-    context.setTransform(...matrix);
-  } else {
-    context.setTransform(1, 0, 0, 1, 0, 0);
-  }
+  context.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function drawLayerGroup(context, layerElement, opacity, compositeOperation = 'source-over') {
@@ -278,11 +297,12 @@ function drawLayerGroup(context, layerElement, opacity, compositeOperation = 'so
   const canvases = Array.from(layerElement.querySelectorAll('canvas'));
   if (!canvases.length) return;
 
-  context.globalCompositeOperation = compositeOperation;
-  context.globalAlpha = opacity;
-
   for (const canvas of canvases) {
     if (canvas.width === 0 || canvas.height === 0) continue;
+
+    context.save();
+    context.globalAlpha = opacity;
+    context.globalCompositeOperation = compositeOperation;
 
     applyCanvasTransform(context, canvas);
 
@@ -293,29 +313,35 @@ function drawLayerGroup(context, layerElement, opacity, compositeOperation = 'so
     }
 
     context.drawImage(canvas, 0, 0);
+    context.restore();
   }
 }
 
 function drawExportCanvas() {
   const size = map.getSize();
-  if (!size) throw new Error('地図サイズを取得できませんでした。');
+  if (!size) {
+    throw new Error('地図サイズを取得できませんでした。');
+  }
 
   const [width, height] = size;
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = width;
   exportCanvas.height = height;
-  const context = exportCanvas.getContext('2d');
 
-  if (!context) throw new Error('Canvas コンテキストを作成できませんでした。');
+  const context = exportCanvas.getContext('2d');
+  if (!context) {
+    throw new Error('Canvas コンテキストを作成できませんでした。');
+  }
 
   const layerElements = Array.from(map.getViewport().querySelectorAll('.ol-layer'));
-  if (layerElements.length < 3) {
+
+  if (!layerElements.length) {
     throw new Error('描画対象レイヤの取得に失敗しました。');
   }
 
-  const baseLayerElement = layerElements[0];
-  const hillshadeLayerElement = layerElements[1];
-  const meshLayerElement = layerElements[2];
+  const baseLayerElement = layerElements[0] || null;
+  const hillshadeLayerElement = layerElements[1] || null;
+  const meshLayerElement = layerElements[2] || null;
 
   drawLayerGroup(context, baseLayerElement, baseLayer.getOpacity(), 'source-over');
   drawLayerGroup(context, hillshadeLayerElement, hillshadeLayer.getOpacity(), 'multiply');
@@ -356,8 +382,8 @@ function exportPng() {
         downloadBlob(blob, `${baseName}.png`);
       }, 'image/png');
     } catch (error) {
-      console.error(error);
-      window.alert('PNG の書き出し中にエラーが発生しました。');
+      console.error('PNG export error:', error);
+      window.alert(`PNG の書き出し中にエラーが発生しました: ${error.message}`);
     }
   });
 
