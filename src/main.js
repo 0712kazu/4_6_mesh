@@ -9,12 +9,12 @@ import TileLayer from 'ol/layer/Tile.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import XYZ from 'ol/source/XYZ.js';
 import VectorSource from 'ol/source/Vector.js';
-import {Fill, Stroke, Style} from 'ol/style.js';
-import {fromLonLat, transform} from 'ol/proj.js';
-import {createEmpty, extend as extendExtent} from 'ol/extent.js';
+import { Fill, Stroke, Style } from 'ol/style.js';
+import { fromLonLat, transform } from 'ol/proj.js';
+import { createEmpty, extend as extendExtent } from 'ol/extent.js';
 
 const GSI_STD_URL = 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png';
-const GSI_RELIEF_URL = 'https://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png';
+const GSI_HILLSHADE_URL = 'https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png';
 const INITIAL_CENTER = fromLonLat([139.7671, 35.6812]);
 const INITIAL_ZOOM = 9;
 const DEFAULT_PADDING = [48, 48, 48, 48];
@@ -22,6 +22,8 @@ const DEFAULT_PADDING = [48, 48, 48, 48];
 const cellSizeInput = document.getElementById('cellSize');
 const colsInput = document.getElementById('cols');
 const rowsInput = document.getElementById('rows');
+const bgOpacityInput = document.getElementById('bgOpacity');
+const bgOpacityValueEl = document.getElementById('bgOpacityValue');
 const centerXEl = document.getElementById('centerX');
 const centerYEl = document.getElementById('centerY');
 const lonEl = document.getElementById('lon');
@@ -34,8 +36,8 @@ const meshSource = new VectorSource();
 const meshLayer = new VectorLayer({
   source: meshSource,
   style: new Style({
-    fill: new Fill({color: 'rgba(0,0,0,0)'}),
-    stroke: new Stroke({color: '#808080', width: 1.5}),
+    fill: new Fill({ color: 'rgba(0,0,0,0)' }),
+    stroke: new Stroke({ color: '#808080', width: 1.5 }),
   }),
 });
 
@@ -47,18 +49,19 @@ const baseLayer = new TileLayer({
   }),
 });
 
-const reliefLayer = new TileLayer({
-  className: 'relief-layer',
+const hillshadeLayer = new TileLayer({
+  className: 'hillshade-layer',
   source: new XYZ({
-    url: GSI_RELIEF_URL,
+    url: GSI_HILLSHADE_URL,
     crossOrigin: 'anonymous',
     attributions: '地理院タイル',
   }),
+  opacity: 0.8,
 });
 
 const map = new Map({
   target: 'map',
-  layers: [baseLayer, reliefLayer, meshLayer],
+  layers: [baseLayer, hillshadeLayer, meshLayer],
   view: new View({
     center: INITIAL_CENTER,
     zoom: INITIAL_ZOOM,
@@ -68,11 +71,20 @@ const map = new Map({
 
 let lastCenter = null;
 
-function formatNumber(value, digits = 3) {
+function formatNumber(value, digits = 3, useGrouping = true) {
   return Number(value).toLocaleString('ja-JP', {
+    useGrouping,
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+function formatMeterCoordinate(value) {
+  return formatNumber(value, 3, false);
+}
+
+function formatLatLon(value) {
+  return formatNumber(value, 6, false);
 }
 
 function downloadBlob(blob, filename) {
@@ -119,10 +131,21 @@ function getMeshExtent() {
 
 function updateCoordinatePanel(center) {
   const [lon, lat] = transform(center, 'EPSG:3857', 'EPSG:4326');
-  centerXEl.textContent = formatNumber(center[0], 3);
-  centerYEl.textContent = formatNumber(center[1], 3);
-  lonEl.textContent = formatNumber(lon, 6);
-  latEl.textContent = formatNumber(lat, 6);
+  centerXEl.textContent = formatMeterCoordinate(center[0]);
+  centerYEl.textContent = formatMeterCoordinate(center[1]);
+  lonEl.textContent = formatLatLon(lon);
+  latEl.textContent = formatLatLon(lat);
+}
+
+function updateBackgroundOpacity() {
+  const value = Math.max(0, Math.min(100, Number(bgOpacityInput.value) || 0));
+  const ratio = value / 100;
+
+  bgOpacityInput.value = String(value);
+  bgOpacityValueEl.textContent = `${value}%`;
+
+  baseLayer.setOpacity(ratio);
+  hillshadeLayer.setOpacity(0.8 * ratio);
 }
 
 function generateMesh(center) {
@@ -191,7 +214,7 @@ function exportGeoJSON() {
     decimals: 3,
   });
 
-  const blob = new Blob([geojson], {type: 'application/geo+json;charset=utf-8'});
+  const blob = new Blob([geojson], { type: 'application/geo+json;charset=utf-8' });
   downloadBlob(blob, 'mesh.geojson');
 }
 
@@ -216,15 +239,14 @@ function drawExportCanvas() {
     context.globalAlpha = Number(opacity) || 1;
 
     const parentClass = canvas.parentElement?.className || '';
-    context.globalCompositeOperation = String(parentClass).includes('relief-layer') ? 'multiply' : 'source-over';
-    if (String(parentClass).includes('relief-layer')) {
-      context.globalAlpha *= 0.8;
-    }
+    context.globalCompositeOperation = String(parentClass).includes('hillshade-layer')
+      ? 'multiply'
+      : 'source-over';
 
-    const transform = canvas.style.transform;
-    if (transform) {
-      const matrix = transform
-        .match(/^matrix\(([^\(]*)\)$/)?.[1]
+    const transformValue = canvas.style.transform;
+    if (transformValue) {
+      const matrix = transformValue
+        .match(/^matrix\(([^()]*)\)$/)?.[1]
         .split(',')
         .map(Number);
 
@@ -290,9 +312,12 @@ map.on('singleclick', (event) => {
   generateMesh(event.coordinate);
 });
 
+bgOpacityInput.addEventListener('input', updateBackgroundOpacity);
 fitMeshBtn.addEventListener('click', fitMesh);
 exportGeoJsonBtn.addEventListener('click', exportGeoJSON);
 exportPngBtn.addEventListener('click', exportPng);
+
+updateBackgroundOpacity();
 
 // 初期表示用に東京駅付近へ仮メッシュを置く
 if (!lastCenter) {

@@ -31,6 +31,18 @@
         </section>
 
         <section class="panel">
+          <h2>背景地図</h2>
+          <label>
+            背景の不透明度
+            <div class="range-row">
+              <input id="bgOpacity" type="range" min="0" max="100" step="1" value="100" />
+              <strong id="bgOpacityValue">100%</strong>
+            </div>
+          </label>
+          <div class="hint">淡色地図と陰影起伏図にまとめて適用されます。</div>
+        </section>
+
+        <section class="panel">
           <h2>中心点</h2>
           <div class="kv"><span>X (EPSG:3857)</span><strong id="centerX">-</strong></div>
           <div class="kv"><span>Y (EPSG:3857)</span><strong id="centerY">-</strong></div>
@@ -51,6 +63,7 @@
           <h2>使い方</h2>
           <ol>
             <li>横マス数・縦マス数・1マスの一辺長を指定</li>
+            <li>必要に応じて背景の不透明度を調整</li>
             <li>地図上をクリック</li>
             <li>その地点を中心にメッシュを生成</li>
             <li>GeoJSON または PNG を保存</li>
