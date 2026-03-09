@@ -192,10 +192,19 @@ function generateMesh(center) {
   colsInput.value = String(cols);
   rowsInput.value = String(rows);
 
+  // 表示用・ファイル名用の中心座標はクリック値をそのまま使う
+  const clickCenter = center;
+
+  // メッシュ生成時のみ、北東方向へ 1/4 メッシュずらす
+  const meshCenter = [
+    clickCenter[0] + cellSize / 4,
+    clickCenter[1] + cellSize / 4,
+  ];
+
   const totalWidth = cols * cellSize;
   const totalHeight = rows * cellSize;
-  const originX = center[0] - totalWidth / 2;
-  const originY = center[1] - totalHeight / 2;
+  const originX = meshCenter[0] - totalWidth / 2;
+  const originY = meshCenter[1] - totalHeight / 2;
 
   const features = [];
 
@@ -210,8 +219,15 @@ function generateMesh(center) {
         geometry: new Polygon(buildSquareRing(minX, minY, maxX, maxY)),
         row: row + 1,
         col: col + 1,
-        center_x: center[0],
-        center_y: center[1],
+
+        // クリックした元の座標を保持
+        center_x: clickCenter[0],
+        center_y: clickCenter[1],
+
+        // 実際にメッシュ生成へ使った中心も保持しておく
+        mesh_center_x: meshCenter[0],
+        mesh_center_y: meshCenter[1],
+
         cell_size: cellSize,
       });
 
@@ -221,9 +237,10 @@ function generateMesh(center) {
 
   meshSource.clear(true);
   meshSource.addFeatures(features);
-  lastCenter = center;
-  updateCoordinatePanel(center);
-  updateFileBaseName(center);
+
+  lastCenter = clickCenter;
+  updateCoordinatePanel(clickCenter);
+  updateFileBaseName(clickCenter);
 }
 
 function fitMesh() {
