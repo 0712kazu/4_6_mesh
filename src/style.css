@@ -60,6 +60,43 @@ h2 {
   background: #fafafa;
 }
 
+.collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
+.collapsible summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  user-select: none;
+  position: relative;
+}
+
+.collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible summary::after {
+  content: '▾';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.collapsible:not([open]) summary::after {
+  content: '▸';
+}
+
+.panel-body {
+  padding: 0 14px 14px;
+}
+
 label {
   display: block;
   margin-bottom: 12px;

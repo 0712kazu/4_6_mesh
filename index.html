@@ -3,52 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HMGメッシュ生成ツール</title>
+    <title>固定サイズメッシュ生成ツール</title>
   </head>
   <body>
     <div id="app">
       <aside class="sidebar">
-        <h1>HMGメッシュ生成ツール</h1>
+        <h1>固定サイズメッシュ生成ツール</h1>
         <p class="lead">
           地図上をクリックすると、その地点を中心に EPSG:3857 上で固定サイズの正方形メッシュを生成します。
         </p>
 
-        <section class="panel">
-          <h2>メッシュ設定</h2>
-          <label>
-            1マスの一辺長（m）
-            <input id="cellSize" type="number" min="1" step="1" value="1500" />
-          </label>
-          <label>
-            横マス数
-            <input id="cols" type="number" min="1" step="1" value="6" />
-          </label>
-          <label>
-            縦マス数
-            <input id="rows" type="number" min="1" step="1" value="4" />
-          </label>
-          <div class="hint">クリックで再生成します。入力変更後は次回クリックから反映されます。</div>
-        </section>
+        <details class="panel collapsible" open>
+          <summary>メッシュ設定</summary>
+          <div class="panel-body">
+            <label>
+              1マスの一辺長（m）
+              <input id="cellSize" type="number" min="1" step="1" value="1500" />
+            </label>
+            <label>
+              横マス数
+              <input id="cols" type="number" min="1" step="1" value="6" />
+            </label>
+            <label>
+              縦マス数
+              <input id="rows" type="number" min="1" step="1" value="4" />
+            </label>
+            <div class="hint">クリックで再生成します。入力変更後は次回クリックから反映されます。</div>
+          </div>
+        </details>
 
-        <section class="panel">
-          <h2>背景地図</h2>
-          <label>
-            背景の不透明度
-            <div class="range-row">
-              <input id="bgOpacity" type="range" min="0" max="100" step="1" value="55" />
-              <strong id="bgOpacityValue">55%</strong>
-            </div>
-          </label>
-          <div class="hint">淡色地図と陰影起伏図にまとめて適用されます。</div>
-        </section>
-
-        <section class="panel">
-          <h2>中心点</h2>
-          <div class="kv"><span>X (EPSG:3857)</span><strong id="centerX">-</strong></div>
-          <div class="kv"><span>Y (EPSG:3857)</span><strong id="centerY">-</strong></div>
-          <div class="kv"><span>経度</span><strong id="lon">-</strong></div>
-          <div class="kv"><span>緯度</span><strong id="lat">-</strong></div>
-        </section>
+        <details class="panel collapsible" open>
+          <summary>中心点</summary>
+          <div class="panel-body">
+            <div class="kv"><span>X (EPSG:3857)</span><strong id="centerX">-</strong></div>
+            <div class="kv"><span>Y (EPSG:3857)</span><strong id="centerY">-</strong></div>
+            <div class="kv"><span>経度</span><strong id="lon">-</strong></div>
+            <div class="kv"><span>緯度</span><strong id="lat">-</strong></div>
+          </div>
+        </details>
 
         <section class="panel">
           <h2>出力</h2>
@@ -65,6 +57,20 @@
             <button id="fitMeshBtn">メッシュ全体を表示</button>
           </div>
         </section>
+
+        <details class="panel collapsible">
+          <summary>背景地図</summary>
+          <div class="panel-body">
+            <label>
+              背景の不透明度
+              <div class="range-row">
+                <input id="bgOpacity" type="range" min="0" max="100" step="1" value="55" />
+                <strong id="bgOpacityValue">55%</strong>
+              </div>
+            </label>
+            <div class="hint">淡色地図と陰影起伏図にまとめて適用されます。</div>
+          </div>
+        </details>
 
         <section class="panel">
           <h2>使い方</h2>
