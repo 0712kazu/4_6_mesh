@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>固定サイズメッシュ生成ツール</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside class="sidebar">
+        <h1>固定サイズメッシュ生成ツール</h1>
+        <p class="lead">
+          地図上をクリックすると、その地点を中心に EPSG:3857 上で固定サイズの正方形メッシュを生成します。
+        </p>
+
+        <section class="panel">
+          <h2>メッシュ設定</h2>
+          <label>
+            1マスの一辺長（m）
+            <input id="cellSize" type="number" min="1" step="1" value="1500" />
+          </label>
+          <label>
+            横マス数
+            <input id="cols" type="number" min="1" step="1" value="6" />
+          </label>
+          <label>
+            縦マス数
+            <input id="rows" type="number" min="1" step="1" value="4" />
+          </label>
+          <div class="hint">クリックで再生成します。入力変更後は次回クリックから反映されます。</div>
+        </section>
+
+        <section class="panel">
+          <h2>中心点</h2>
+          <div class="kv"><span>X (EPSG:3857)</span><strong id="centerX">-</strong></div>
+          <div class="kv"><span>Y (EPSG:3857)</span><strong id="centerY">-</strong></div>
+          <div class="kv"><span>経度</span><strong id="lon">-</strong></div>
+          <div class="kv"><span>緯度</span><strong id="lat">-</strong></div>
+        </section>
+
+        <section class="panel">
+          <h2>出力</h2>
+          <div class="actions">
+            <button id="exportGeoJsonBtn">GeoJSONを書き出し</button>
+            <button id="exportPngBtn">PNGを書き出し</button>
+            <button id="fitMeshBtn">メッシュ全体を表示</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>使い方</h2>
+          <ol>
+            <li>横マス数・縦マス数・1マスの一辺長を指定</li>
+            <li>地図上をクリック</li>
+            <li>その地点を中心にメッシュを生成</li>
+            <li>GeoJSON または PNG を保存</li>
+          </ol>
+        </section>
+      </aside>
+
+      <main class="map-wrap">
+        <div id="map" class="map"></div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
