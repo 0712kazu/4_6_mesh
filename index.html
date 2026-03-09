@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>固定サイズメッシュ生成ツール</title>
+    <title>HMGメッシュ生成ツール</title>
   </head>
   <body>
     <div id="app">
       <aside class="sidebar">
-        <h1>固定サイズメッシュ生成ツール</h1>
+        <h1>HMGメッシュ生成ツール</h1>
         <p class="lead">
           地図上をクリックすると、その地点を中心に EPSG:3857 上で固定サイズの正方形メッシュを生成します。
         </p>
@@ -52,6 +52,13 @@
 
         <section class="panel">
           <h2>出力</h2>
+          <label>
+            ファイル名（拡張子なし）
+            <input id="fileBaseName" type="text" value="" placeholder="mesh_中心X_中心Y" />
+          </label>
+          <div class="hint">
+            GeoJSON と PNG の保存時にこの名前を使います。未入力なら中心XYから自動設定します。
+          </div>
           <div class="actions">
             <button id="exportGeoJsonBtn">GeoJSONを書き出し</button>
             <button id="exportPngBtn">PNGを書き出し</button>
@@ -66,6 +73,7 @@
             <li>必要に応じて背景の不透明度を調整</li>
             <li>地図上をクリック</li>
             <li>その地点を中心にメッシュを生成</li>
+            <li>ファイル名を確認・変更</li>
             <li>GeoJSON または PNG を保存</li>
           </ol>
         </section>

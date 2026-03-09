@@ -24,6 +24,7 @@ const colsInput = document.getElementById('cols');
 const rowsInput = document.getElementById('rows');
 const bgOpacityInput = document.getElementById('bgOpacity');
 const bgOpacityValueEl = document.getElementById('bgOpacityValue');
+const fileBaseNameInput = document.getElementById('fileBaseName');
 const centerXEl = document.getElementById('centerX');
 const centerYEl = document.getElementById('centerY');
 const lonEl = document.getElementById('lon');
@@ -85,6 +86,42 @@ function formatMeterCoordinate(value) {
 
 function formatLatLon(value) {
   return formatNumber(value, 6, false);
+}
+
+function sanitizeFilenamePart(value) {
+  return String(value)
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/\s+/g, '_');
+}
+
+function getCenterFilenamePart(value) {
+  const rounded = Number(value).toFixed(3);
+  return sanitizeFilenamePart(rounded);
+}
+
+function getDefaultBaseName(center = lastCenter) {
+  if (!center) {
+    return 'mesh';
+  }
+  const xPart = getCenterFilenamePart(center[0]);
+  const yPart = getCenterFilenamePart(center[1]);
+  return `mesh_${xPart}_${yPart}`;
+}
+
+function getBaseFilename() {
+  const raw = fileBaseNameInput.value.trim();
+  if (raw) {
+    return sanitizeFilenamePart(raw);
+  }
+
+  const defaultName = getDefaultBaseName();
+  fileBaseNameInput.value = defaultName;
+  return defaultName;
+}
+
+function updateFileBaseName(center) {
+  fileBaseNameInput.value = getDefaultBaseName(center);
 }
 
 function downloadBlob(blob, filename) {
@@ -188,6 +225,7 @@ function generateMesh(center) {
   meshSource.addFeatures(features);
   lastCenter = center;
   updateCoordinatePanel(center);
+  updateFileBaseName(center);
 }
 
 function fitMesh() {
@@ -209,13 +247,14 @@ function exportGeoJSON() {
   const format = new GeoJSON();
   const geojson = format.writeFeatures(meshSource.getFeatures(), {
     featureProjection: 'EPSG:3857',
-    dataProjection: 'EPSG:3857',
+    dataProjection: 'EPSG:4326',
     rightHanded: true,
-    decimals: 3,
+    decimals: 8,
   });
 
+  const baseName = getBaseFilename();
   const blob = new Blob([geojson], { type: 'application/geo+json;charset=utf-8' });
-  downloadBlob(blob, 'mesh.geojson');
+  downloadBlob(blob, `${baseName}.geojson`);
 }
 
 function drawExportCanvas() {
@@ -292,12 +331,13 @@ function exportPng() {
   map.once('rendercomplete', () => {
     try {
       const canvas = drawExportCanvas();
+      const baseName = getBaseFilename();
       canvas.toBlob((blob) => {
         if (!blob) {
           window.alert('PNG の生成に失敗しました。');
           return;
         }
-        downloadBlob(blob, 'mesh.png');
+        downloadBlob(blob, `${baseName}.png`);
       }, 'image/png');
     } catch (error) {
       console.error(error);
@@ -319,7 +359,6 @@ exportPngBtn.addEventListener('click', exportPng);
 
 updateBackgroundOpacity();
 
-// 初期表示用に東京駅付近へ仮メッシュを置く
 if (!lastCenter) {
   generateMesh(INITIAL_CENTER);
   fitMesh();
