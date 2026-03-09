@@ -34,7 +34,9 @@ const exportPngBtn = document.getElementById('exportPngBtn');
 const fitMeshBtn = document.getElementById('fitMeshBtn');
 
 const meshSource = new VectorSource();
+
 const meshLayer = new VectorLayer({
+  className: 'mesh-layer',
   source: meshSource,
   style: new Style({
     fill: new Fill({ color: 'rgba(0,0,0,0)' }),
@@ -253,35 +255,35 @@ function exportGeoJSON() {
   downloadBlob(blob, `${baseName}.geojson`);
 }
 
-function applyCanvasTransform(context, canvas) {
-  const transform = canvas.style.transform;
+function setCanvasTransform(context, canvas) {
+  const transformText = canvas.style.transform;
 
-  if (transform && transform.startsWith('matrix(')) {
-    const values = transform
+  if (transformText && transformText.startsWith('matrix(')) {
+    const matrix = transformText
       .slice(7, -1)
       .split(',')
       .map((value) => Number(value.trim()));
 
-    if (values.length === 6 && values.every((value) => Number.isFinite(value))) {
-      context.setTransform(...values);
+    if (matrix.length === 6 && matrix.every((value) => Number.isFinite(value))) {
+      context.setTransform(...matrix);
       return;
     }
   }
 
-  const width = Number.parseFloat(canvas.style.width);
-  const height = Number.parseFloat(canvas.style.height);
+  const styleWidth = Number.parseFloat(canvas.style.width);
+  const styleHeight = Number.parseFloat(canvas.style.height);
 
   if (
-    Number.isFinite(width) &&
-    Number.isFinite(height) &&
-    width > 0 &&
-    height > 0
+    Number.isFinite(styleWidth) &&
+    Number.isFinite(styleHeight) &&
+    styleWidth > 0 &&
+    styleHeight > 0
   ) {
     context.setTransform(
-      canvas.width / width,
+      canvas.width / styleWidth,
       0,
       0,
-      canvas.height / height,
+      canvas.height / styleHeight,
       0,
       0
     );
@@ -289,32 +291,6 @@ function applyCanvasTransform(context, canvas) {
   }
 
   context.setTransform(1, 0, 0, 1, 0, 0);
-}
-
-function drawLayerGroup(context, layerElement, opacity, compositeOperation = 'source-over') {
-  if (!layerElement) return;
-
-  const canvases = Array.from(layerElement.querySelectorAll('canvas'));
-  if (!canvases.length) return;
-
-  for (const canvas of canvases) {
-    if (canvas.width === 0 || canvas.height === 0) continue;
-
-    context.save();
-    context.globalAlpha = opacity;
-    context.globalCompositeOperation = compositeOperation;
-
-    applyCanvasTransform(context, canvas);
-
-    const backgroundColor = canvas.parentElement?.style.backgroundColor;
-    if (backgroundColor) {
-      context.fillStyle = backgroundColor;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    context.drawImage(canvas, 0, 0);
-    context.restore();
-  }
 }
 
 function drawExportCanvas() {
@@ -333,19 +309,40 @@ function drawExportCanvas() {
     throw new Error('Canvas コンテキストを作成できませんでした。');
   }
 
-  const layerElements = Array.from(map.getViewport().querySelectorAll('.ol-layer'));
-
-  if (!layerElements.length) {
-    throw new Error('描画対象レイヤの取得に失敗しました。');
+  const canvases = map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer');
+  if (!canvases.length) {
+    throw new Error('描画対象の canvas が見つかりませんでした。');
   }
 
-  const baseLayerElement = layerElements[0] || null;
-  const hillshadeLayerElement = layerElements[1] || null;
-  const meshLayerElement = layerElements[2] || null;
+  canvases.forEach((canvas) => {
+    if (canvas.width === 0 || canvas.height === 0) return;
 
-  drawLayerGroup(context, baseLayerElement, baseLayer.getOpacity(), 'source-over');
-  drawLayerGroup(context, hillshadeLayerElement, hillshadeLayer.getOpacity(), 'multiply');
-  drawLayerGroup(context, meshLayerElement, 1, 'source-over');
+    const parent = canvas.parentElement;
+    const parentOpacity = parent?.style.opacity;
+    const canvasOpacity = canvas.style.opacity;
+    const opacity = Number(parentOpacity || canvasOpacity || '1') || 1;
+
+    const parentClass = parent?.className ? String(parent.className) : '';
+    const ownClass = canvas.className ? String(canvas.className) : '';
+    const classText = `${parentClass} ${ownClass}`;
+
+    context.save();
+    context.globalAlpha = opacity;
+    context.globalCompositeOperation = classText.includes('hillshade-layer')
+      ? 'multiply'
+      : 'source-over';
+
+    setCanvasTransform(context, canvas);
+
+    const backgroundColor = parent?.style.backgroundColor;
+    if (backgroundColor) {
+      context.fillStyle = backgroundColor;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    context.drawImage(canvas, 0, 0);
+    context.restore();
+  });
 
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.globalAlpha = 1;
