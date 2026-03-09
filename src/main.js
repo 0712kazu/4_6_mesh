@@ -96,14 +96,11 @@ function sanitizeFilenamePart(value) {
 }
 
 function getCenterFilenamePart(value) {
-  const rounded = Number(value).toFixed(3);
-  return sanitizeFilenamePart(rounded);
+  return sanitizeFilenamePart(Number(value).toFixed(3));
 }
 
 function getDefaultBaseName(center = lastCenter) {
-  if (!center) {
-    return 'mesh';
-  }
+  if (!center) return 'mesh';
   const xPart = getCenterFilenamePart(center[0]);
   const yPart = getCenterFilenamePart(center[1]);
   return `mesh_${xPart}_${yPart}`;
@@ -111,9 +108,7 @@ function getDefaultBaseName(center = lastCenter) {
 
 function getBaseFilename() {
   const raw = fileBaseNameInput.value.trim();
-  if (raw) {
-    return sanitizeFilenamePart(raw);
-  }
+  if (raw) return sanitizeFilenamePart(raw);
 
   const defaultName = getDefaultBaseName();
   fileBaseNameInput.value = defaultName;
@@ -257,6 +252,38 @@ function exportGeoJSON() {
   downloadBlob(blob, `${baseName}.geojson`);
 }
 
+function drawLayerCanvas(context, canvas, compositeOperation = 'source-over') {
+  if (!canvas || canvas.width === 0 || canvas.height === 0) return;
+
+  const opacity = canvas.parentElement?.style.opacity || canvas.style.opacity || '1';
+  context.globalAlpha = Number(opacity) || 1;
+  context.globalCompositeOperation = compositeOperation;
+
+  const transformValue = canvas.style.transform;
+  if (transformValue) {
+    const matrix = transformValue
+      .match(/^matrix\(([^()]*)\)$/)?.[1]
+      .split(',')
+      .map(Number);
+
+    if (matrix && matrix.length === 6) {
+      context.setTransform(...matrix);
+    } else {
+      context.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  } else {
+    context.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  const backgroundColor = canvas.parentElement?.style.backgroundColor;
+  if (backgroundColor) {
+    context.fillStyle = backgroundColor;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  context.drawImage(canvas, 0, 0);
+}
+
 function drawExportCanvas() {
   const size = map.getSize();
   if (!size) throw new Error('地図サイズを取得できませんでした。');
@@ -269,43 +296,23 @@ function drawExportCanvas() {
 
   if (!context) throw new Error('Canvas コンテキストを作成できませんでした。');
 
-  const layerCanvases = map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer');
+  const layerElements = Array.from(map.getViewport().querySelectorAll('.ol-layer'));
+  const layerCanvases = layerElements
+    .map((layerEl) => layerEl.querySelector('canvas'))
+    .filter(Boolean);
 
-  layerCanvases.forEach((canvas) => {
-    if (canvas.width === 0 || canvas.height === 0) return;
+  if (!layerCanvases.length) {
+    throw new Error('描画対象のレイヤが見つかりませんでした。');
+  }
 
-    const opacity = canvas.parentElement?.style.opacity || canvas.style.opacity || '1';
-    context.globalAlpha = Number(opacity) || 1;
+  // 既知の描画順: baseLayer -> hillshadeLayer -> meshLayer
+  const baseCanvas = layerCanvases[0];
+  const hillshadeCanvas = layerCanvases[1];
+  const meshCanvas = layerCanvases[2];
 
-    const parentClass = canvas.parentElement?.className || '';
-    context.globalCompositeOperation = String(parentClass).includes('hillshade-layer')
-      ? 'multiply'
-      : 'source-over';
-
-    const transformValue = canvas.style.transform;
-    if (transformValue) {
-      const matrix = transformValue
-        .match(/^matrix\(([^()]*)\)$/)?.[1]
-        .split(',')
-        .map(Number);
-
-      if (matrix && matrix.length === 6) {
-        context.setTransform(...matrix);
-      } else {
-        context.setTransform(1, 0, 0, 1, 0, 0);
-      }
-    } else {
-      context.setTransform(1, 0, 0, 1, 0, 0);
-    }
-
-    const backgroundColor = canvas.parentElement?.style.backgroundColor;
-    if (backgroundColor) {
-      context.fillStyle = backgroundColor;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    context.drawImage(canvas, 0, 0);
-  });
+  drawLayerCanvas(context, baseCanvas, 'source-over');
+  drawLayerCanvas(context, hillshadeCanvas, 'multiply');
+  drawLayerCanvas(context, meshCanvas, 'source-over');
 
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.globalAlpha = 1;
