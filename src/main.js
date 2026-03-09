@@ -43,6 +43,7 @@ const meshLayer = new VectorLayer({
 });
 
 const baseLayer = new TileLayer({
+  className: 'base-layer',
   source: new XYZ({
     url: GSI_STD_URL,
     crossOrigin: 'anonymous',
@@ -252,36 +253,47 @@ function exportGeoJSON() {
   downloadBlob(blob, `${baseName}.geojson`);
 }
 
-function drawLayerCanvas(context, canvas, compositeOperation = 'source-over') {
-  if (!canvas || canvas.width === 0 || canvas.height === 0) return;
-
-  const opacity = canvas.parentElement?.style.opacity || canvas.style.opacity || '1';
-  context.globalAlpha = Number(opacity) || 1;
-  context.globalCompositeOperation = compositeOperation;
-
+function applyCanvasTransform(context, canvas) {
   const transformValue = canvas.style.transform;
-  if (transformValue) {
-    const matrix = transformValue
-      .match(/^matrix\(([^()]*)\)$/)?.[1]
-      .split(',')
-      .map(Number);
+  if (!transformValue) {
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    return;
+  }
 
-    if (matrix && matrix.length === 6) {
-      context.setTransform(...matrix);
-    } else {
-      context.setTransform(1, 0, 0, 1, 0, 0);
-    }
+  const matrix = transformValue
+    .match(/^matrix\(([^()]*)\)$/)?.[1]
+    .split(',')
+    .map(Number);
+
+  if (matrix && matrix.length === 6) {
+    context.setTransform(...matrix);
   } else {
     context.setTransform(1, 0, 0, 1, 0, 0);
   }
+}
 
-  const backgroundColor = canvas.parentElement?.style.backgroundColor;
-  if (backgroundColor) {
-    context.fillStyle = backgroundColor;
-    context.fillRect(0, 0, canvas.width, canvas.height);
+function drawLayerGroup(context, layerElement, opacity, compositeOperation = 'source-over') {
+  if (!layerElement) return;
+
+  const canvases = Array.from(layerElement.querySelectorAll('canvas'));
+  if (!canvases.length) return;
+
+  context.globalCompositeOperation = compositeOperation;
+  context.globalAlpha = opacity;
+
+  for (const canvas of canvases) {
+    if (canvas.width === 0 || canvas.height === 0) continue;
+
+    applyCanvasTransform(context, canvas);
+
+    const backgroundColor = canvas.parentElement?.style.backgroundColor;
+    if (backgroundColor) {
+      context.fillStyle = backgroundColor;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    context.drawImage(canvas, 0, 0);
   }
-
-  context.drawImage(canvas, 0, 0);
 }
 
 function drawExportCanvas() {
@@ -297,26 +309,22 @@ function drawExportCanvas() {
   if (!context) throw new Error('Canvas コンテキストを作成できませんでした。');
 
   const layerElements = Array.from(map.getViewport().querySelectorAll('.ol-layer'));
-  const layerCanvases = layerElements
-    .map((layerEl) => layerEl.querySelector('canvas'))
-    .filter(Boolean);
-
-  if (!layerCanvases.length) {
-    throw new Error('描画対象のレイヤが見つかりませんでした。');
+  if (layerElements.length < 3) {
+    throw new Error('描画対象レイヤの取得に失敗しました。');
   }
 
-  // 既知の描画順: baseLayer -> hillshadeLayer -> meshLayer
-  const baseCanvas = layerCanvases[0];
-  const hillshadeCanvas = layerCanvases[1];
-  const meshCanvas = layerCanvases[2];
+  const baseLayerElement = layerElements[0];
+  const hillshadeLayerElement = layerElements[1];
+  const meshLayerElement = layerElements[2];
 
-  drawLayerCanvas(context, baseCanvas, 'source-over');
-  drawLayerCanvas(context, hillshadeCanvas, 'multiply');
-  drawLayerCanvas(context, meshCanvas, 'source-over');
+  drawLayerGroup(context, baseLayerElement, baseLayer.getOpacity(), 'source-over');
+  drawLayerGroup(context, hillshadeLayerElement, hillshadeLayer.getOpacity(), 'multiply');
+  drawLayerGroup(context, meshLayerElement, 1, 'source-over');
 
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.globalAlpha = 1;
   context.globalCompositeOperation = 'source-over';
+
   return exportCanvas;
 }
 
@@ -339,6 +347,7 @@ function exportPng() {
     try {
       const canvas = drawExportCanvas();
       const baseName = getBaseFilename();
+
       canvas.toBlob((blob) => {
         if (!blob) {
           window.alert('PNG の生成に失敗しました。');
