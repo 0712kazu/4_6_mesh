@@ -3,32 +3,41 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>固定サイズメッシュ生成ツール</title>
+    <title>HMGメッシュ生成ツール</title>
   </head>
   <body>
     <div id="app">
       <aside class="sidebar">
-        <h1>固定サイズメッシュ生成ツール</h1>
+        <h1>HMGメッシュ生成ツール</h1>
         <p class="lead">
-          地図上をクリックすると、その地点を中心に EPSG:3857 上で固定サイズの正方形メッシュを生成します。
+          地図上をクリックすると、その地点を基準に EPSG:3857 上で固定サイズの正方形メッシュを生成します。
         </p>
 
         <details class="panel collapsible">
           <summary>メッシュ設定</summary>
           <div class="panel-body">
             <label>
-              1マスの一辺長（m）
+              セルサイズ（EPSG:3857 m）
               <input id="cellSize" type="number" min="1" step="1" value="1500" />
             </label>
+
+            <div class="hint">
+              Webメルカトル座標系（EPSG:3857）上のセルサイズです。東西方向は指定した距離になります。南北方向の地表距離は緯度により変化します。
+            </div>
+
             <label>
               横マス数
               <input id="cols" type="number" min="1" step="1" value="6" />
             </label>
+
             <label>
               縦マス数
               <input id="rows" type="number" min="1" step="1" value="4" />
             </label>
-            <div class="hint">クリックで再生成します。入力変更後は次回クリックから反映されます。</div>
+
+            <div class="hint">
+              例: 1500 を指定すると、メルカトル座標上で東西 1500 m・南北 1500 m の正方形セルになります。
+            </div>
           </div>
         </details>
 
@@ -75,11 +84,11 @@
         <section class="panel">
           <h2>使い方</h2>
           <ol>
-            <li>横マス数・縦マス数・1マスの一辺長を指定</li>
+            <li>セルサイズ（EPSG:3857 m）・横マス数・縦マス数を指定</li>
             <li>必要に応じて背景の不透明度を調整</li>
-            <li>地図上をクリック</li>
-            <li>その地点を中心にメッシュを生成</li>
-            <li>ファイル名を確認・変更</li>
+            <li>地図をクリック</li>
+            <li>クリック地点を基準にメッシュを生成</li>
+            <li>ファイル名を確認または変更</li>
             <li>GeoJSON または PNG を保存</li>
           </ol>
         </section>
