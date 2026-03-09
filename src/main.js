@@ -293,6 +293,44 @@ function setCanvasTransform(context, canvas) {
   context.setTransform(1, 0, 0, 1, 0, 0);
 }
 
+function collectRenderableCanvases() {
+  const viewport = map.getViewport();
+
+  const allCanvases = Array.from(viewport.querySelectorAll('canvas'));
+
+  return allCanvases.filter((canvas) => {
+    if (!canvas) return false;
+    if (canvas.width <= 0 || canvas.height <= 0) return false;
+    if (canvas.closest('.ol-control')) return false;
+
+    const style = window.getComputedStyle(canvas);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+    return true;
+  });
+}
+
+function isHillshadeCanvas(canvas, index, totalCount) {
+  const classText = [
+    canvas.className || '',
+    canvas.parentElement?.className || '',
+    canvas.closest('.ol-layer')?.className || '',
+  ].join(' ');
+
+  if (classText.includes('hillshade-layer')) {
+    return true;
+  }
+
+  // class で取れない環境向けの予備判定
+  // レイヤ順が [base, hillshade, mesh] のため、
+  // 描画対象が3枚以上ある場合の2枚目を hillshade とみなす
+  if (totalCount >= 3 && index === 1) {
+    return true;
+  }
+
+  return false;
+}
+
 function drawExportCanvas() {
   const size = map.getSize();
   if (!size) {
@@ -309,32 +347,25 @@ function drawExportCanvas() {
     throw new Error('Canvas コンテキストを作成できませんでした。');
   }
 
-  const canvases = map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer');
+  const canvases = collectRenderableCanvases();
   if (!canvases.length) {
     throw new Error('描画対象の canvas が見つかりませんでした。');
   }
 
-  canvases.forEach((canvas) => {
-    if (canvas.width === 0 || canvas.height === 0) return;
-
-    const parent = canvas.parentElement;
-    const parentOpacity = parent?.style.opacity;
+  canvases.forEach((canvas, index) => {
+    const parentOpacity = canvas.parentElement?.style.opacity;
     const canvasOpacity = canvas.style.opacity;
     const opacity = Number(parentOpacity || canvasOpacity || '1') || 1;
 
-    const parentClass = parent?.className ? String(parent.className) : '';
-    const ownClass = canvas.className ? String(canvas.className) : '';
-    const classText = `${parentClass} ${ownClass}`;
-
     context.save();
     context.globalAlpha = opacity;
-    context.globalCompositeOperation = classText.includes('hillshade-layer')
+    context.globalCompositeOperation = isHillshadeCanvas(canvas, index, canvases.length)
       ? 'multiply'
       : 'source-over';
 
     setCanvasTransform(context, canvas);
 
-    const backgroundColor = parent?.style.backgroundColor;
+    const backgroundColor = canvas.parentElement?.style.backgroundColor;
     if (backgroundColor) {
       context.fillStyle = backgroundColor;
       context.fillRect(0, 0, canvas.width, canvas.height);
